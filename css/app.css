@@ -18,3 +18,14 @@ header, footer {
 main {
     flex: 1 1 auto;
 }
+
+.photos {
+    display: flex;
+}
+
+.photos img {
+    border: 5px solid #fff;
+    border-radius: 5px;
+    box-shadow: 0 0 5px #000;
+    margin: 0 10px 10px 0;
+}
