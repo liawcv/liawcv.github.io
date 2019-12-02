@@ -1,0 +1,20 @@
+body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font: 16px calibri;
+}
+
+header, main, footer {
+    padding: 10px 50px;
+}
+
+header, footer {
+    background-color: #333;
+    color: #fff;
+}
+
+main {
+    flex: 1 1 auto;
+}
