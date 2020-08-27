@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="image/favicon.png">
+    <link rel="stylesheet" href="css/app.css">
+    <title>Google Maps JS API</title>
+    <style> 
+        main {
+            display: grid;
+            gap: 10px;
+            grid-template-columns: 250px 1fr;
+        }
+
+        #map {
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><a href="index.html">Demo8 : Drawing Manager</a></h1>
+    </header>
+
+    <nav>
+        <a href="demo1.html">Demo1</a>
+        <a href="demo2.html">Demo2</a>
+        <a href="demo3.html">Demo3</a>
+        <a href="demo4.html">Demo4</a>
+        <a href="demo5.html">Demo5</a>
+        <a href="demo6.html">Demo6</a>
+        <a href="demo7.html">Demo7</a>
+        <a href="demo8.html">Demo8</a>
+        <a href="demo9.html">Demo9</a>
+        <a href="demo10.html">Demo10</a>
+        <a href="demo11.html">Demo11</a>
+        <a href="demo12.html">Demo12</a>
+        <a href="demo13.html">Demo13</a>
+    </nav>
+
+    <!-- Vue -->
+    <main id="app" v-cloak>
+        <div id="panel">
+            <button @click="removeAll">Remove All</button>
+
+            <hr>
+
+            <button @click="removeCircles">Remove</button>
+            Circle = {{ circles.length }}
+
+            <hr>
+
+            <button @click="removeRectangles">Remove</button>
+            Rectangle = {{ rectangles.length }}
+
+            <hr>
+            
+            <button @click="removePolygons">Remove</button>
+            Polygon = {{ polygons.length }}
+        </div>
+
+        <div id="map"></div>
+    </main>
+
+    <!-- TODO(1): Add drawing library -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=&libraries=drawing"></script>
+    <script src="js/jquery.slim.js"></script>
+    <script src="js/vue.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // ====================================================================
+        // Vue
+        // ====================================================================
+
+        const vm = new Vue({
+            el: '#app',
+            data: {
+                circles: [],
+                rectangles: [],
+                polygons: []
+            },
+            methods: {
+                removeAll() {
+                    vm.removeCircles();
+                    vm.removeRectangles();
+                    vm.removePolygons();
+                },
+                removeCircles() {
+                    // TODO(4): Remove all circles
+                    vm.circles.forEach(o => o.setMap(null));
+                    vm.circles = [];
+                },
+                removeRectangles() {
+                    // TODO(5): Remove all rectangles
+                    vm.rectangles.forEach(o => o.setMap(null));
+                    vm.rectangles = [];
+                },
+                removePolygons() {
+                    // TODO(6): Remove all polygons
+                    vm.polygons.forEach(o => o.setMap(null));
+                    vm.polygons = [];
+                }
+            },
+            mounted() {
+                // TODO(8): Handle keyboard shortcuts
+                // Escape or 0 --> null, 1 --> circle, 2 --> rectangle, 3 --> polygon
+                $(document).keydown(e => {
+                    switch (e.key) {
+                        case 'Escape':
+                        case '0': mgr.setDrawingMode(null); break;
+                        case '1': mgr.setDrawingMode('circle'); break;
+                        case '2': mgr.setDrawingMode('rectangle'); break;
+                        case '3': mgr.setDrawingMode('polygon'); break;
+                    }
+                });
+            }
+        });
+
+        // ====================================================================
+        // Google Maps
+        // ====================================================================
+
+        const gm = google.maps;
+
+        const center = { lat: 3.215000, lng: 101.730000 };
+
+        const map = new gm.Map($('#map')[0], {
+            center,
+            zoom: 15,
+            disableDefaultUI: true,
+            disableDoubleClickZoom: true,
+            clickableIcons: false
+        });
+
+        // TODO(2): Drawing manager
+        const mgr = new gm.drawing.DrawingManager({
+            map,
+            // drawingControl: false,
+            drawingControlOptions: {
+                drawingModes: ['circle', 'rectangle', 'polygon'],
+                position: gm.ControlPosition.TOP_RIGHT
+            },
+            // drawingMode: null,
+            circleOptions   : { draggable: true, strokeColor: 'red'   , fillColor: 'red'   },
+            rectangleOptions: { draggable: true, strokeColor: 'purple', fillColor: 'purple' },
+            polygonOptions  : { draggable: true, strokeColor: 'blue'  , fillColor: 'blue'  }
+        });
+
+        // TODO(3): Drawing manager events
+        // Examples: circlecomplete, rectanglecomplete, polygoncomplete,
+        //           markercomplete, polylinecomplete, overlaycomplete
+        mgr.addListener('circlecomplete', o => {
+            vm.circles.push(o);
+        })
+
+        mgr.addListener('rectanglecomplete', o => {
+            vm.rectangles.push(o);
+        })
+
+        mgr.addListener('polygoncomplete', o => {
+            vm.polygons.push(o);
+        })
+
+        // TODO(7): Event --> overlaycomplete (e.type and e.overlay)
+        //          Double-click to remove overlay
+        mgr.addListener('overlaycomplete', e => {
+            let arr = [];
+
+            switch (e.type) {
+                case 'circle'   : arr = vm.circles; break;
+                case 'rectangle': arr = vm.rectangles; break;
+                case 'polygon'  : arr = vm.polygons; break;
+            }
+                        
+            let o = e.overlay;
+
+            o.addListener('dblclick', e => {
+                o.setMap(null);
+                let i = arr.indexOf(o);
+                arr.splice(i, 1);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="image/favicon.png">
+    <link rel="stylesheet" href="css/app.css">
+    <title>Google Maps JS API</title>
+    <style>
+        main {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 10px;
+        }
+
+        #map {
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><a href="index.html">Demo6 : Shapes</a></h1>
+    </header>
+
+    <nav>
+        <a href="demo1.html">Demo1</a>
+        <a href="demo2.html">Demo2</a>
+        <a href="demo3.html">Demo3</a>
+        <a href="demo4.html">Demo4</a>
+        <a href="demo5.html">Demo5</a>
+        <a href="demo6.html">Demo6</a>
+        <a href="demo7.html">Demo7</a>
+        <a href="demo8.html">Demo8</a>
+        <a href="demo9.html">Demo9</a>
+        <a href="demo10.html">Demo10</a>
+        <a href="demo11.html">Demo11</a>
+        <a href="demo12.html">Demo12</a>
+        <a href="demo13.html">Demo13</a>
+    </nav>
+
+    <main id="app" v-cloak>
+        <div id="panel">
+            <select v-model="type">
+                <option value="circle">Circle</option>
+                <option value="rectangle">Rectangle</option>
+                <option value="polygon">Polygon</option>
+            </select>
+            <button @click="removeAll">Remove All</button>
+    
+            <hr>
+    
+            <button @click="remove('circle')">Remove</button>
+            Circle = {{ count('circle') }}
+    
+            <hr>
+    
+            <button @click="remove('rectangle')">Remove</button>
+            Rectangle = {{ count('rectangle') }}
+    
+            <hr>
+    
+            <button @click="remove('polygon')">Remove</button>
+            Polygon = {{ count('polygon') }}
+        </div>
+    
+        <div id="map"></div>
+    </main>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=&libraries=geometry"></script>
+    <script src="js/jquery.slim.js"></script>
+    <script src="js/vue.js"></script>
+    <script src="js/app.js"></script>
+
+    <script>
+        // ====================================================================
+        // Vue
+        // ====================================================================
+
+        const vm = new Vue({
+            el: '#app',
+            data: {
+                type: 'circle',
+                shapes: []
+            },
+            methods: {
+                count(type) {
+                    // TODO(5): Return the count of a particular type of shapes
+                    return this.shapes.filter(s => s.type == type).length;
+                },
+                remove(type) {
+                    // TODO(6): Remove a particular type of shapes
+                    vm.shapes.filter(s => s.type == type).forEach(s => s.setMap(null));
+                    vm.shapes = vm.shapes.filter(s => s.type != type);
+                },
+                removeAll() {
+                    // TODO(7): Remove all shapes
+                    vm.shapes.forEach(s => s.setMap(null));
+                    vm.shapes = [];
+                }
+            }
+        });
+
+        // ====================================================================
+        // Google Maps
+        // ====================================================================
+
+        const gm = google.maps;
+
+        const center = { lat: 3.215000, lng: 101.730000 };
+
+        const map = new gm.Map($('#map')[0], {
+            center,
+            zoom: 13,
+            disableDefaultUI: true,
+            disableDoubleClickZoom: true,
+            clickableIcons: false
+        });
+        
+        map.addListener('click', e => {
+            // TODO(1): Call function based on shape
+            let p = e.latLng;
+            let s = null;
+
+            switch (vm.type) {
+                case 'circle'   : s = drawCircle(p)   ; break;
+                case 'rectangle': s = drawRectangle(p); break;
+                case 'polygon'  : s = drawPolygon(p)  ; break;
+            }
+
+            vm.shapes.push(s);
+
+            // TODO(8): Double-click to remove shape
+            s.addListener('dblclick', e => {
+                s.setMap(null);
+                let i = vm.shapes.indexOf(s);
+                vm.shapes.splice(i, 1);
+            });
+        });
+
+        function drawCircle(p) {
+            // TODO(2): Draw circle
+            let s = new gm.Circle({
+                map,
+                center: p,
+                radius: 1000,
+                strokeColor: 'red',
+                fillColor: 'red',
+                draggable: true,
+                type: 'circle' // Custom
+            });
+
+            return s;
+        }
+
+        function drawRectangle(p) {
+            // TODO(3): Draw rectangle
+            let sw = gm.geometry.spherical.computeOffset(p, 1000, 225);
+            let ne = gm.geometry.spherical.computeOffset(p, 1000,  45);
+
+            let s = new gm.Rectangle({
+                map,
+                bounds: new gm.LatLngBounds(sw, ne),
+                strokeColor: 'orange',
+                fillColor: 'orange',
+                draggable: true,
+                type: 'rectangle' // Custom
+            });
+
+            return s;
+        }
+
+        function drawPolygon(p) {
+            // TODO(4): Draw polygon
+            let p1 = gm.geometry.spherical.computeOffset(p, 1000,   0);
+            let p2 = gm.geometry.spherical.computeOffset(p, 1000,  60);
+            let p3 = gm.geometry.spherical.computeOffset(p, 1000, 120);
+            let p4 = gm.geometry.spherical.computeOffset(p, 1000, 180);
+            let p5 = gm.geometry.spherical.computeOffset(p, 1000, 240);
+            let p6 = gm.geometry.spherical.computeOffset(p, 1000, 300);
+
+            let s = new gm.Polygon({
+                map,
+                path: [p1, p2, p3, p4, p5, p6],
+                strokeColor: 'purple',
+                fillColor: 'purple',
+                draggable: true,
+                type: 'polygon' // Custom
+            });
+
+            return s;
+        }
+
+        // NOTE:
+        //  3 = Trigon / Triangle
+        //  4 = Tetragon / Quadrilateral
+        //  5 = Pentagon
+        //  6 = Hexagon
+        //  7 = Heptagon
+        //  8 = Octagon
+        //  9 = Nonagon
+        // 10 = Decagon
+    </script>
+</body>
+</html>

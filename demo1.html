@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="image/favicon.png">
+    <link rel="stylesheet" href="css/app.css">
+    <title>Google Maps JS API</title>
+    <style> 
+        main {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #map {
+            border: 1px solid #333;
+            flex: 1 1 auto;
+        }
+
+        #info img {
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><a href="index.html">Demo1 : Basic</a></h1>
+    </header>
+
+    <nav>
+        <a href="demo1.html">Demo1</a>
+        <a href="demo2.html">Demo2</a>
+        <a href="demo3.html">Demo3</a>
+        <a href="demo4.html">Demo4</a>
+        <a href="demo5.html">Demo5</a>
+        <a href="demo6.html">Demo6</a>
+        <a href="demo7.html">Demo7</a>
+        <a href="demo8.html">Demo8</a>
+        <a href="demo9.html">Demo9</a>
+        <a href="demo10.html">Demo10</a>
+        <a href="demo11.html">Demo11</a>
+        <a href="demo12.html">Demo12</a>
+        <a href="demo13.html">Demo13</a>
+    </nav>
+
+    <!-- Vue ----------------------------------------------------------------->
+    <main id="app" v-cloak>
+        <div id="panel">
+            <button @click="home">Home</button>
+
+            <select v-model="type">
+                <option value="roadmap">Roadmap</option>
+                <option value="satellite">Satellite</option>
+                <option value="hybrid">Hybrid</option>
+                <option value="terrain">Terrain</option>
+            </select>
+        </div>
+
+        <div id="map"></div>
+    </main>
+
+    <div hidden>
+        <div id="info">
+            <b>Tunku Abdul Rahman University College</b><br>
+            Affortable and Quality Education<br>
+            <img src="image/taruc.png">
+        </div>
+    </div>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key="></script>
+    <script src="js/jquery.slim.js"></script>
+    <script src="js/vue.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // ====================================================================
+        // Vue
+        // ====================================================================
+
+        const vm = new Vue({
+            el: '#app',
+            data: {
+                type: 'roadmap'
+            },
+            watch: {
+                type() {
+                    // TODO(2): Set map type id
+                    map.setMapTypeId(vm.type);
+                }
+            },
+            methods: {
+                home() {
+                    // TODO(3): Pan to center
+                    // map.setCenter(center);
+                    map.panTo(center);
+                }
+            }
+        });
+
+        // ====================================================================
+        // Google Maps
+        // ====================================================================
+        
+        // TODO(1): Map --> center (3.214951, 101.728449)
+        const gm = google.maps;
+
+        // const center = new gm.LatLng(3.214951, 101.728449);
+        const center = { lat: 3.214951, lng: 101.728449 };
+
+        const map = new gm.Map($('#map')[0], {
+            center,
+            zoom: 16,
+            disableDefaultUI: true,
+            clickableIcons: false,
+            mapTypeId: vm.type
+        });
+
+        // TODO(4): Marker
+        const marker = new gm.Marker({
+            position: center,
+            map,
+            animation: gm.Animation.DROP,
+            icon: { url: 'image/home-120.png', scaledSize: new gm.Size(48, 48) }
+        });
+
+        // TODO(5): Info window
+        const info = new gm.InfoWindow({
+            content: $('#info')[0]
+        });
+        
+        // TODO(6): Map --> tilesloaded event (once) --> open info window
+        gm.event.addListenerOnce(map, 'tilesloaded', e => {  
+            info.open(map, marker);
+        });
+
+        // TODO(7): Marker --> click event --> toggle info window
+        marker.addListener('click', e => { 
+            if (info.getMap()) {
+                info.close();
+            }
+            else {
+                info.open(map, marker);
+            }
+        });
+    </script>
+</body>
+</html>
