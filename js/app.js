@@ -1,34 +1,49 @@
-// Load an external vue component
+// PURPOSE: Load component (enhanced)
 function load(comp) {
-    return resolve => fetch(`_${comp}.html`)
+    return () => fetch(`_${comp}.html`)
         .then(resp => resp.text())
-        .then(text => { 
-            $(document.body).append(text);
-            resolve(Vue.component(comp));
+        .then(text => {
+            // Obtain <style>, <template> and <script> contents
+            const $root    = $(text);
+            const style    = $root.siblings('style')[0];
+            const template = $root.siblings('template')[0];
+            const script   = $root.siblings('script')[0];
+
+            // Style --------------------------------------
+            if (style) {
+                const css = new CSSStyleSheet();
+                css.replaceSync(style.textContent);
+                style.textContent = '';
+                for (const rule of css.cssRules) {
+                    if (rule.selectorText == ':root') {
+                        rule.selectorText = `#${comp}-content`;
+                    } 
+                    else {
+                        rule.selectorText = `#${comp}-content ${rule.selectorText}`;
+                    }
+                    style.textContent += rule.cssText;
+                }
+            }
+
+            // Template -----------------------------------
+            if (template) {
+                template.id = `${comp}-template`;
+                template.content.firstElementChild.id = `${comp}-content`;
+            }
+
+            // Append contents to main document
+            $(document.body).append(style, template, script);
+            
+            // Update template id
+            if (template) {
+                app.component(comp).template = '#' + template.id;
+            }
+
+            return app.component(comp);
         });
 }
 
-// Auto focus on a given input field when component loaded
-Vue.directive('focus', {
-    inserted(el) {
-        el.focus();
-    }
-});
-
-// Format a number to the given decimal places
-Vue.filter('number', (value, decimal = 2) => {
-    return parseFloat(value).toFixed(decimal);
-});
-
-// Format gender to its relevant emoji (👩🏻‍🎓 or 👨🏻‍🎓) and full word
-Vue.filter('gender', value => {
-    return value == 'F' ? '👩🏻‍🎓 Female' : '👨🏻‍🎓 Male';
-});
-
-// Format fb profile id to fb profile photo url
-Vue.filter('fb', value => {
-    return `https://graph.facebook.com/${value}/picture?width=100&height=100`;
-});
+// ----------------------------------------------------------------------------
 
 // PURPOSE: Center-crop image to the width and height specified (upscale)
 function crop(f, w, h, to = 'blob', type = 'image/jpeg') {
