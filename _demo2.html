@@ -1,0 +1,206 @@
+<style>
+    :root {
+        display: grid;
+        grid: 'panel map' auto
+              'items map' 1fr
+              / 250px 1fr;
+        gap: 10px;
+        overflow: auto;
+    }
+
+    #panel {
+        grid-area: panel;
+    }
+
+    #map {
+        grid-area: map;
+        border: 1px solid #333;
+    }
+
+    #items {
+        grid-area: items;
+        overflow-y: scroll;
+
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .item {
+        border: 1px solid #666;
+        border-radius: 3px;
+        padding: 3px;
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .item:hover {
+        background-color: #ccc;
+    }
+
+    .item input {
+        position: absolute;
+        top: 50%;
+        right: 2px;
+        transform: translate(0, -50%);
+        width: 24px;
+        height: 24px;
+        display: none;
+    }
+
+    .item:hover input {
+        display: block;
+    }
+
+    .item b {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 3px;
+        margin-right: 5px;
+        background-color: #666;
+        color: #fff;
+        text-align: center;
+    }
+
+    #info {
+        font: 16px 'Roboto';
+    }
+</style>
+
+<template>
+    <main>
+        <div id="panel">
+            {{ markers.length }} marker(s)
+            <button @click="removeAll">Remove All</button>
+        </div>
+
+        <div id="items">
+            <!-- Show label, latitude and longitude -->
+            <div class="item" v-for="m of markers" @click="panTo(m)">
+                <b>{{ m.label.text }}</b>
+                <span>
+                    {{ m.position.lat().toFixed(6) }},
+                    {{ m.position.lng().toFixed(6) }}
+                </span>
+                <input type="image" src="image/remove.png" @click.stop="remove(m)">
+            </div>
+        </div>
+        
+        <div id="map"></div>
+
+        <template>
+            <div id="info">
+                This is marker <b>{{ text }}</b>
+            </div>
+        </template>
+    </main>
+</template>
+
+<script>
+    app.component('demo2', {
+        data: () => ({
+            markers: [],
+            text: '',
+        }),
+        
+        methods: {
+            addMarker(position) {
+                // Marker
+                const text = this._letters.shift();
+                this._letters.push(text);
+                
+                const m = new gm.Marker({
+                    position,
+                    map,
+                    animation: gm.Animation.DROP,
+                    draggable: true,
+                    label: { text, color: '#fff', fontSize: '20px', fontWeight: 'bold' },
+                });
+
+                this.markers.push(m);
+
+                // Marker --> position_changed event --> update UI
+                m.addListener('position_changed', e => this.$forceUpdate());
+
+                // Marker --> dblclick event --> remove marker
+                m.addListener('dblclick', e => {
+                    m.setMap(null);
+                    const i = this.markers.indexOf(m);
+                    this.markers.splice(i, 1);
+                });
+
+                // Marker --> click event --> open/close info window
+                m.addListener('click', e => {
+                    if (this._info.anchor == m) {
+                        this._info.close();
+                    }
+                    else {
+                        this.text = m.label.text;
+                        this._info.open(map, m);
+                    }
+                });
+            },
+            panTo(m) {
+                // Pan to marker position
+                map.panTo(m.getPosition());
+                m.setAnimation(gm.Animation.BOUNCE);
+                setTimeout(_ => m.setAnimation(null), 3000);
+
+                // Open info window (trigger click event)
+                gm.event.trigger(m, 'click');
+            },
+            remove(m) {
+                // Remove marker
+                // Vue.toRaw(m).setMap(null);
+                // const i = this.markers.indexOf(m);
+                // this.markers.splice(i, 1);
+                gm.event.trigger(m, 'dblclick');
+            },
+            removeAll() {
+                // Remove all markers
+                this.markers.forEach(m => Vue.toRaw(m).setMap(null));
+                this.markers = [];
+            },
+        },
+
+        created() {
+            this.$root.title = 'Demo 2 : Marker';
+
+            // Non-reactive properties
+            this._letters = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+            this._info = null;
+        },
+
+        mounted() {
+            // ================================================================
+            // Google Map
+            // ================================================================
+
+            // Map --> disable double click zoom
+            map = new gm.Map($('#map')[0], {
+                center,
+                zoom: 16,
+                disableDefaultUI: true,
+                clickableIcons: false,
+                disableDoubleClickZoom: true,
+            });
+            
+            // Map --> dblclick event --> add marker
+            map.addListener('dblclick', e => {
+                this.addMarker(e.latLng);
+            });
+
+            // Info window
+            this._info = new gm.InfoWindow({
+                content: $('#info')[0],
+            });
+
+            // ================================================================
+        },
+
+        unmounted() {
+            map = null;
+        },
+    });
+</script>

@@ -1,0 +1,156 @@
+<style>
+    :root {
+        display: grid;
+        grid: auto / 200px 1fr;
+        gap: 10px;
+    }
+
+    #map {
+        border: 1px solid #333;
+    }
+</style>
+
+<template>
+    <main>
+        <div id="panel">
+            <button @click="removeCircles">Remove</button>
+            Circle = {{ circles.length }}
+
+            <hr>
+
+            <button @click="removeRectangles">Remove</button>
+            Rectangle = {{ rectangles.length }}
+
+            <hr>
+
+            <button @click="removePolygons">Remove</button>
+            Polygon = {{ polygons.length }}
+
+            <hr>
+
+            <button @click="removeAll">Remove All</button>
+        </div>
+
+        <div id="map"></div>
+    </main>
+</template>
+
+<script>
+    app.component('demo8', {
+        data: () => ({
+            circles: [],
+            rectangles: [],
+            polygons: [],
+        }),
+
+        methods: {
+            removeCircles() {
+                // Remove all circles
+                this.circles.forEach(o => Vue.toRaw(o).setMap(null));
+                this.circles = [];
+            },
+            removeRectangles() {
+                // Remove all rectangles
+                this.rectangles.forEach(o => Vue.toRaw(o).setMap(null));
+                this.rectangles = [];
+            },
+            removePolygons() {
+                // Remove all polygons
+                this.polygons.forEach(o => Vue.toRaw(o).setMap(null));
+                this.polygons = [];
+            },
+            removeAll() {
+                this.removeCircles();
+                this.removeRectangles();
+                this.removePolygons();
+            },
+        },
+
+        created() {
+            this.$root.title = 'Demo 8 : Drawing Manager';
+        },
+
+        mounted() {
+            // ================================================================
+            // Google Maps
+            // ================================================================
+
+            map = new gm.Map($('#map')[0], {
+                center,
+                zoom: 15,
+                disableDefaultUI: true,
+                clickableIcons: false,
+                disableDoubleClickZoom: true,
+            });
+
+            // Drawing manager
+            const mgr = new gm.drawing.DrawingManager({
+                map,
+                drawingControlOptions: {
+                    drawingModes: ['circle', 'rectangle', 'polygon'],
+                    position: gm.ControlPosition.TOP_RIGHT,
+                },
+                circleOptions:    { draggable: true, strokeColor: 'pink'  , fillColor: 'pink'   },
+                rectangleOptions: { draggable: true, strokeColor: 'cyan'  , fillColor: 'cyan'   },
+                polygonOptions:   { draggable: true, strokeColor: 'yellow', fillColor: 'yellow' },
+                // drawingMode: null,
+                // drawingControl: false,
+            });
+
+            // Drawing manager events (circle, rectangle & polygon)
+            // Examples: circlecomplete, rectanglecomplete, polygoncomplete,
+            //           markercomplete, polylinecomplete, overlaycomplete
+            mgr.addListener('circlecomplete', o => {
+                this.circles.push(o);
+            });
+
+            mgr.addListener('rectanglecomplete', o => {
+                this.rectangles.push(o);
+            });
+
+            mgr.addListener('polygoncomplete', o => {
+                this.polygons.push(o);
+            });
+
+            // Event --> overlaycomplete (e.type and e.overlay)
+            //           Double-click to remove overlay
+            mgr.addListener('overlaycomplete', e => {
+                let arr = [];
+
+                switch (e.type) {
+                    case 'circle'   : arr = this.circles;    break;
+                    case 'rectangle': arr = this.rectangles; break;
+                    case 'polygon'  : arr = this.polygons;   break;
+                }
+
+                const o = e.overlay;
+
+                o.addListener('dblclick', e => {
+                    o.setMap(null);
+                    const i = arr.indexOf(o);
+                    arr.splice(i, 1);
+                });
+            });
+            
+            // ================================================================
+
+            // Handle keyboard shortcuts
+            // Escape or 0 --> null, 1 --> circle, 2 --> rectangle, 3 --> polygon
+            $(document).keydown(e => {
+                switch (e.key) {
+                    case 'Escape':
+                    case '0': mgr.setDrawingMode(null);        break;
+                    case '1': mgr.setDrawingMode('circle');    break;
+                    case '2': mgr.setDrawingMode('rectangle'); break;
+                    case '3': mgr.setDrawingMode('polygon');   break;
+                }
+            });
+        },
+
+        unmounted() {
+            map = null;
+            // Turn off keyboard shortcuts --> unsubscribe events
+            $(document).off();
+        },
+    });
+</script>

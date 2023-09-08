@@ -1,0 +1,261 @@
+<style>
+    :root {
+        display: grid;
+        grid: 'panel map' auto
+              'items map' 1fr
+              / 250px 1fr;
+        gap: 10px;
+        overflow: auto;
+    }
+
+    #panel {
+        grid-area: panel;
+    }
+
+    #map {
+        grid-area: map;
+        border: 1px solid #333;
+    }
+
+    #items {
+        grid-area: items;
+        overflow-y: scroll;
+
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .item {
+        border: 1px solid #666;
+        border-radius: 3px;
+        padding: 3px;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .item:hover {
+        background-color: #ccc;
+    }
+
+    .item input {
+        position: absolute;
+        top: 50%;
+        right: 2px;
+        transform: translate(0, -50%);
+        width: 24px;
+        height: 24px;
+        display: none;
+    }
+
+    .item:hover input {
+        display: block;
+    }
+
+    .item b {
+        display: inline-block;
+        width: 25px;
+        height: 20px;
+        border-radius: 3px;
+        margin-right: 5px;
+        background-color: #666;
+        color: #fff;
+        text-align: center;
+    }
+</style>
+
+<template>
+    <main>
+        <div id="panel">
+            <div v-if="editing">
+                <button @click="save">Save</button>
+                <button @click="cancel">Cancel</button>
+            </div>
+            <div v-else>
+                <button @click="load">Load</button>
+                <button @click="edit">Edit</button>
+            </div>
+
+            <hr>
+
+            <div>Length = {{ computeLength().toFixed(3) }} KM</div>
+        </div>
+
+        <div id="items">
+            <div class="item" v-for="p, i of points">
+                <b>{{ i }}</b>
+                <span>
+                    {{ p.lat().toFixed(6) }},
+                    {{ p.lng().toFixed(6) }}
+                </span>
+                <input type="image" src="image/remove.png" @click.stop="remove(i)" v-if="editing">
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </main>
+</template>
+
+<script>
+    app.component('demo5', {
+        data: () => ({
+            line: null,
+            editing: false,
+        }),
+
+        computed: {
+            points() {
+                // Return line's path as array
+                if (this.line) {
+                    return this.line.getPath().getArray();
+                }
+    
+                return [];
+            },
+        },
+
+        methods: {
+            computeLength() {
+                // Compute length of line's path
+                if (this.line) {
+                    return gm.geometry.spherical.computeLength(this.line.getPath()) / 1000;
+                }
+
+                return 0;
+            },
+            edit() {
+                this.editing = true;
+
+                // Set line red, editable & draggable
+                this.line.setOptions({
+                    strokeColor: 'red',
+                    editable: true,
+                    draggable: true,
+                });
+
+                // Set map's cursor to crosshair
+                map.setOptions({
+                    draggableCursor: 'crosshair',
+                });
+            },
+            cancel() {
+                this.editing = false;
+
+                // Set line orange, not editable & not draggable
+                this.line.setOptions({
+                    strokeColor: 'orange',
+                    editable: false,
+                    draggable: false,
+                });
+
+                // Set map's cursor to null
+                map.setOptions({
+                    draggableCursor: null,
+                });
+            },
+            remove(i) {
+                // Remove a point from line's path (if length > 2)
+                if (this.line.getPath().length > 2) {
+                    this.line.getPath().removeAt(i);
+                }
+            },
+            save() {
+                // Encode and save path to Firebase --> map/$/polyline
+                DB.doc('map/$').set(
+                    { polyline: gm.geometry.encoding.encodePath(this.line.getPath()) },
+                    { merge: true }
+                ).then(_ => alert('Saved'));
+
+                this.cancel();
+            },
+            load() {
+                // Load and decode path from Firebase <-- map/$/polyline
+                DB.doc('map/$').get().then(doc => {
+                    const { polyline } = doc.data() ?? {};
+
+                    if (polyline) {
+                        const arr = gm.geometry.encoding.decodePath(polyline);
+                        this.line.getPath().clear();
+                        arr.forEach(p => this.line.getPath().push(p));
+                        alert('Loaded');
+                    }
+                    else {
+                        alert('No data');
+                    }
+                });
+            },
+        },
+
+        created() {
+            this.$root.title = "Demo 5 : Fire Polyline";
+        },
+
+        mounted() {
+            // ================================================================
+            // Google Maps
+            // ================================================================
+            
+            map = new gm.Map($('#map')[0], {
+                center,
+                zoom: 15,
+                disableDefaultUI: true,
+                disableDoubleClickZoom: true,
+                clickableIcons: false,
+            });
+
+            const p1 = new gm.LatLng(center.lat(), center.lng() - 0.01);
+            const p2 = new gm.LatLng(center.lat(), center.lng() + 0.01);
+
+            // Create line
+            const line = new gm.Polyline({
+                map,
+                path: [p1, p2],
+                strokeColor: 'orange',
+                strokeWeight: 10,
+            });
+
+            this.line = line; // As reactive data property
+
+            // Line event (dblclick) --> toggle editable
+            line.addListener('dblclick', e => {
+                this.editing ? this.cancel() : this.edit();
+            });
+
+            // Line's path events (insert_at, remove_at & set_at) --> update UI
+            line.getPath().addListener('insert_at', e => this.$forceUpdate());
+            line.getPath().addListener('remove_at', e => this.$forceUpdate());
+            line.getPath().addListener('set_at'   , e => this.$forceUpdate());
+
+            // Line event (rightclick) --> remove vertex
+            line.addListener('rightclick', e => {
+                if (e.vertex == undefined) return;
+
+                if (line.getPath().length > 2) {
+                    line.getPath().removeAt(e.vertex);
+                }
+            });
+
+            // Map event (click) --> push a point to line's path
+            map.addListener('click', e => {
+                if (this.editing) {
+                    line.getPath().push(e.latLng);
+                }
+            });
+
+            // Map event (contextmenu) --> pop a point from line's path
+            map.addListener('contextmenu', e => {
+                if (this.editing && line.getPath().length > 2) {
+                    line.getPath().pop();
+                }
+            });
+            
+            // ================================================================
+
+            // this.load();
+        },
+
+        unmounted() {
+            map = null;
+        },
+    });
+</script>

@@ -1,0 +1,129 @@
+<style>
+    :root {
+        display: grid;
+        grid: auto 1fr / auto;
+        gap: 10px;
+    }
+
+    #panel {
+        display: flex;
+    }
+
+    #map {
+        border: 1px solid #333;
+    }
+
+    select {
+        text-transform: capitalize;
+    }
+
+    #info {
+        font: 16px 'Roboto';
+    }
+
+    #info img {
+        display: block;
+        border: 1px solid #999;
+        width: 400px;
+        height: 120px;
+    }
+</style>
+
+<template>
+    <main>
+        <div id="panel">
+            <button @click="home">Home</button>
+            <select v-model="mapTypeId">
+                <option v-for="id of mapTypeIds">{{ id }}</option>
+            </select>
+        </div>
+
+        <div id="map"></div>
+
+        <template>
+            <div id="info">
+                <img src="image/tarumt.png">
+                <div>
+                    Find out more information
+                    <a href="https://www.tarc.edu.my" target="_blank">here</a>.
+                </div>
+            </div>
+        </template>
+    </main>
+</template>
+
+<script>
+    app.component('demo1', {
+        data: () => ({
+            mapTypeIds: gm.MapTypeId,
+            mapTypeId: 'roadmap',
+        }),
+
+        watch: {
+            mapTypeId() {
+                map.setMapTypeId(this.mapTypeId);
+            },
+        },
+
+        methods: {
+            home() {
+                map.setZoom(16);
+                map.panTo(center);
+            },
+        },
+
+        created() {
+            this.$root.title = 'Demo 1 : Basic';
+        },
+
+        mounted() {
+            // ================================================================
+            // Google Maps
+            // ================================================================
+
+            map = new gm.Map($('#map')[0], {
+                center,
+                zoom: 16,
+                disableDefaultUI: true,
+                clickableIcons: false,
+                mapTypeId: this.mapTypeId,
+            });
+
+            const marker = new gm.Marker({
+                position: center,
+                map,
+                animation: gm.Animation.DROP,
+                icon: {
+                    url: 'image/b/home.png',
+                    scaledSize: new gm.Size(48, 48),
+                },
+            });
+
+            const info = new gm.InfoWindow({
+                content: $('#info')[0],
+                // position: center,
+                // map,
+                // anchor: marker,
+            });            
+
+            // setTimeout(_ => info.open(map, marker), 1000);
+
+            gm.event.addListenerOnce(map, 'tilesloaded', _ => info.open(map, marker));
+
+            marker.addListener('click', e => { 
+                if (info.getMap() == null) {
+                    info.open(map, marker);
+                }
+                else {
+                    info.close();
+                }
+            });
+
+            // ================================================================
+        },
+
+        unmounted() {
+            map = null;
+        },
+    });
+</script>

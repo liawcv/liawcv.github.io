@@ -1,0 +1,188 @@
+<style>
+    :root {
+        display: grid;
+        grid: auto / 200px 1fr;
+        gap: 10px;
+    }
+
+    #panel {
+        display: flex;
+    }
+
+    [type=color] {
+        width: 60px;
+    }
+
+    #map {
+        border: 1px solid #333;
+    }
+</style>
+
+<template>
+    <main>
+        <div>
+            <div id="panel">
+                <input type="color" v-model="color" list>
+                <button @click="removeAll">Remove All</button>
+            </div>
+            <p>{{ circles.length }} circle(s)</p>
+        </div>
+
+        <div id="map"></div>
+    </main>
+</template>
+
+<script>
+    app.component('demo9', {
+        data: () => ({
+            circles: [],
+            color: '#ff0000',
+        }),
+
+        watch: {
+            color() {
+                // Firebase --> UPDATE (color)
+                const o = this.circles.find(o => o.getEditable());
+                if (o) {
+                    CIRCLES.doc(o.id).update({ color: this.color });
+                }
+            },
+        },
+
+        methods: {
+            addCircle(id, { center, radius, color }) {
+                const o = new gm.Circle({
+                    map,
+                    // NOTE: Set draggable to false --> more efficient
+                    draggable: false,
+                    // Options --> id, center, radius, strokeColor, fillColor
+                    id, // Custom
+                    center,
+                    radius,
+                    strokeColor: color,
+                    fillColor: color,
+                });
+
+                this.circles.push(o);
+
+                o.addListener('dblclick', e => {
+                    // Firebase --> DELETE
+                    CIRCLES.doc(o.id).delete();
+                });
+
+                o.addListener('click', e => {
+                    // Make only this circle editable
+                    // Update color input
+                    this.circles.forEach(o => o.setEditable(false));
+                    o.setEditable(true);
+                    this.color = o.strokeColor;
+                });
+
+                o.addListener('center_changed', e => {
+                    console.log('center_changed');
+                    // Firebase --> UPDATE (center)
+                    CIRCLES.doc(o.id).update({ center: o.getCenter().toJSON() });
+                });
+
+                o.addListener('radius_changed', e => {
+                    console.log('radius_changed');
+                    // Firebase --> UPDATE (radius)
+                    CIRCLES.doc(o.id).update({ radius: o.getRadius() });
+                });
+            },
+            removeAll() {
+                // Firebase --> DELETE ALL
+                this.circles.forEach(o => CIRCLES.doc(o.id).delete());
+            },
+        },
+
+        created() {
+            this.$root.title = 'Demo 9 : Fire Circle';
+
+            // ================================================================
+            // Firebase
+            // ================================================================
+
+            // Firebase (subscribe for changes) --> get unsubscribe() function
+            unsubscribe = CIRCLES?.onSnapshot(snap => {
+                snap.docChanges().forEach(change => {
+                    const { type, doc } = change;
+
+                    if (type == 'added') {
+                        // Add circle to map --> call addCircle(id, data)
+                        this.addCircle(doc.id, doc.data());
+                    }
+                    else if (type == 'removed') {
+                        // Remove circle from map and array
+                        const o = this.circles.find(o => o.id == doc.id);
+                        Vue.toRaw(o).setMap(null);
+                        const i = this.circles.indexOf(o);
+                        this.circles.splice(i, 1);
+                    }
+                    else if (type == 'modified') {
+                        // Update circle (center, radius, color)
+                        const o = this.circles.find(o => o.id == doc.id);
+                        const { center, radius, color } = doc.data();
+                        o.setOptions({
+                            center,
+                            radius,
+                            strokeColor: color,
+                            fillColor: color,
+                        });
+                    }
+                });
+            });
+
+            // ================================================================
+        },
+
+        mounted() {
+            // ================================================================
+            // Google Maps
+            // ================================================================
+
+            map = new gm.Map($('#map')[0], {
+                center,
+                zoom: 15,
+                disableDefaultUI: true,
+                disableDoubleClickZoom: true,
+                clickableIcons: false,
+            });
+
+            const mgr = new gm.drawing.DrawingManager({
+                map,
+                drawingControlOptions: {
+                    drawingModes: ['circle'],
+                },
+            });
+
+            // Drawing manager events
+            mgr.addListener('circlecomplete', o => {
+                // Remove draft
+                o.setMap(null);
+
+                // Firebase --> INSERT (center, radius, color)
+                CIRCLES.doc().set({
+                    center: o.getCenter().toJSON(), // lat & lng
+                    radius: o.getRadius(),
+                    color: this.color,
+                });
+            });
+
+            map.addListener('click', e => {
+                // Make all circles none editable
+                // Reset color input
+                this.circles.forEach(o => o.setEditable(false));
+                this.color = '#ff0000';
+            });
+
+            // ================================================================
+        },
+
+        unmounted() {
+            map = null;
+            // Unsubscribe snapshot listener
+            unsubscribe();
+        },
+    });
+</script>

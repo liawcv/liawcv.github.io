@@ -1,0 +1,207 @@
+<style>
+    :root {
+        display: grid;
+        grid: auto / 200px 1fr;
+        gap: 10px;
+    }
+
+    #map {
+        border: 1px solid #333;
+    }
+
+    select {
+        text-transform: capitalize;
+    }
+</style>
+
+<template>
+    <main>
+        <div id="panel">
+            <select v-model="type">
+                <option>circle</option>
+                <option>rectangle</option>
+                <option>polygon</option>
+            </select>
+
+            <!-- Select list for edge (3-10) -->
+            <select v-model.number="edge" v-if="type == 'polygon'">
+                <option v-for="n of [3, 4, 5, 6, 7, 8, 9, 10]">{{ n }}</option>
+            </select>
+
+            <hr>
+
+            <button @click="remove('circle')">Remove</button>
+            Circle = {{ count('circle') }}
+
+            <hr>
+
+            <button @click="remove('rectangle')">Remove</button>
+            Rectangle = {{ count('rectangle') }}
+
+            <hr>
+
+            <button @click="remove('polygon')">Remove</button>
+            Polygon = {{ count('polygon') }}
+
+            <hr>
+
+            <button @click="removeAll">Remove All</button>
+        </div>
+
+        <div id="map"></div>
+    </main>
+</template>
+
+<script>
+    app.component('demo6', {
+        data: () => ({
+            type: 'circle',
+            edge: 3,
+            shapes: [],
+        }),
+
+        methods: {
+            count(type) {
+                // Return the count of a particular type of shapes
+                return this.shapes.filter(s => s.type == type).length;
+            },
+            remove(type) {
+                // Remove a particular type of shapes
+                this.shapes.filter(s => s.type == type).forEach(s => Vue.toRaw(s).setMap(null));
+                this.shapes = this.shapes.filter(s => s.type != type);
+            },
+            removeAll() {
+                // Remove all shapes
+                this.shapes.forEach(s => Vue.toRaw(s).setMap(null));
+                this.shapes = [];
+            },
+        },
+
+        created() {
+            this.$root.title = 'Demo 6 : Shape';
+        },
+
+        mounted() {
+            // ================================================================
+            // Google Maps
+            // ================================================================
+
+            map = new gm.Map($('#map')[0], {
+                center,
+                zoom: 13,
+                disableDefaultUI: true,
+                clickableIcons: false,
+                disableDoubleClickZoom: true,
+            });
+
+            map.addListener('click', e => {
+                // Call function based on shape
+                // circle -----> drawCircle(p)
+                // rectangle --> drawRectangle(p)
+                // polygon ----> drawPolygon(p, edge)
+                const p = e.latLng;
+                let s = null;
+                
+                switch (this.type) {
+                    case 'circle'   : s = drawCircle(p); break;
+                    case 'rectangle': s = drawRectangle(p); break;
+                    case 'polygon'  : s = drawPolygon(p, this.edge); break;
+                }
+
+                if (!s) return;
+
+                this.shapes.push(s);
+               
+                // Double-click to remove shape
+                s.addListener('dblclick', e => {
+                    s.setMap(null);
+                    const i = this.shapes.indexOf(s);
+                    this.shapes.splice(i, 1);
+                });
+            });
+
+            function drawCircle(p) {
+                // Draw circle
+                const s = new gm.Circle({
+                    center: p,
+                    radius: 1000,
+                    map,
+                    strokeColor: 'pink',
+                    fillColor: 'pink',
+                    draggable: true,
+                    type: 'circle', // Custom
+                });
+
+                return s;
+            }
+
+            function drawRectangle(p) {
+                // Draw rectangle
+                const sw = gm.geometry.spherical.computeOffset(p, 1000, 225);
+                const ne = gm.geometry.spherical.computeOffset(p, 1000,  45);
+
+                const s = new gm.Rectangle({
+                    bounds: new gm.LatLngBounds(sw, ne),
+                    map,
+                    strokeColor: 'cyan',
+                    fillColor: 'cyan',
+                    draggable: true,
+                    type: 'rectangle', // Custom
+                });
+
+                return s;
+            }
+
+            function drawPolygon(p, edge) {
+                // Draw polygon
+                // const p1 = gm.geometry.spherical.computeOffset(p, 1000,   0);
+                // const p2 = gm.geometry.spherical.computeOffset(p, 1000,  60);
+                // const p3 = gm.geometry.spherical.computeOffset(p, 1000, 120);
+                // const p4 = gm.geometry.spherical.computeOffset(p, 1000, 180);
+                // const p5 = gm.geometry.spherical.computeOffset(p, 1000, 240);
+                // const p6 = gm.geometry.spherical.computeOffset(p, 1000, 300);
+
+                const s = new gm.Polygon({
+                    // path: [p1, p2, p3, p4, p5, p6],
+                    path: generatePath(p, 1000, edge),
+                    map,
+                    strokeColor: 'yellow',
+                    fillColor: 'yellow',
+                    draggable: true,
+                    type: 'polygon', // Custom
+                });
+
+                return s;
+            }
+            
+            function generatePath(from, distance, edge) {
+                // Generate path for polygon
+                const path = [];
+
+                for (let heading = 0; heading < 360; heading += 360 / edge) {
+                    path.push(gm.geometry.spherical.computeOffset(from, distance, heading));
+                }
+
+                return path;
+            }
+
+            // -----------------------------
+            // NOTE:
+            // -----------------------------
+            //  3 = Trigon / Triangle
+            //  4 = Tetragon / Quadrilateral
+            //  5 = Pentagon
+            //  6 = Hexagon
+            //  7 = Heptagon
+            //  8 = Octagon
+            //  9 = Nonagon
+            // 10 = Decagon
+
+            // ================================================================
+        },
+
+        unmounted() {
+            map = null;
+        },
+    });
+</script>

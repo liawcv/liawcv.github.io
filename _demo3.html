@@ -1,0 +1,329 @@
+<style> 
+    :root {
+        display: grid;
+        grid: 'panel map' auto
+              'items map' 1fr
+              / 250px 1fr;
+        gap: 10px;
+        overflow: auto;
+    }
+
+    #panel {
+        grid-area: panel;
+    }
+
+    #map {
+        grid-area: map;
+        border: 1px solid #333;
+    }
+
+    #items {
+        grid-area: items;
+        overflow-y: scroll;
+
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .item {
+        display: grid;
+        grid: 'image label' auto
+              'image coord' auto
+              / auto 1fr;
+        gap: 3px;
+
+        border: 1px solid #666;
+        border-radius: 3px;
+        padding: 3px;
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .item:hover {
+        background-color: #ccc;
+    }
+
+    .item input {
+        position: absolute;
+        top: 50%;
+        right: 2px;
+        transform: translate(0, -50%);
+        width: 24px;
+        height: 24px;
+        display: none;
+    }
+
+    .item:hover input {
+        display: block;
+    }
+
+    .item img {
+        grid-area: image;
+        border: 1px solid #666;
+        width: 40px;
+        height: 40px;
+    }
+
+    .item b {
+        grid-area: label;
+        background: #666;
+        color: #fff;
+        padding: 2px 4px;
+
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .item small {
+        grid-area: coord;
+    }
+
+    form img {
+        display: block;
+        border: 1px solid #999;
+        width: 100px;
+        height: 100px;
+        cursor: pointer;
+    }
+
+    /* Style marker label */
+    /* Use !important for --> color, font-family, font-size, font-weight */
+    .label {
+        color: #000 !important;
+        font-family: 'Roboto' !important;
+        font-size: 16px !important;
+        font-weight: bold !important;
+        background: #fff9;
+        padding: 2px 4px;
+        margin-top: -50px;
+    }
+
+    /* Style marker icon */
+    img[src$='#icon'] {
+        border-radius: 50%;
+        outline: 2px solid #000;
+        outline-offset: -2px;
+    }
+</style>
+
+<template>
+    <main>
+        <div id="panel">
+            {{ markers.length }} marker(s)
+            <button @click="removeAll">Remove All</button>
+        </div>
+
+        <div id="items">
+            <div class="item" v-for="m of markers" @click="panTo(m)">
+                <img :src="m.photo">
+                <b>{{ m.label.text }}</b>
+                <small>
+                    {{ m.position.lat().toFixed(6) }},
+                    {{ m.position.lng().toFixed(6) }}
+                </small>
+                <input type="image" src="image/remove.png" @click.stop="remove(m)">
+            </div>
+        </div>
+
+        <div id="map"></div>
+
+        <template>
+            <form id="info" class="form" @submit.prevent="save">
+                <label>Text</label>
+                <input v-model.trim="text" required maxlength="100" v-focus>
+                
+                <label>Photo</label>
+                <div>
+                    <label>
+                        <input type="file" hidden @change="change">
+                        <img :src="photo">
+                    </label>
+                </div>
+
+                <section>
+                    <button>Save</button>
+                    <button @click.prevent="cancel">Cancel</button>
+                </section>
+            </form>
+        </template>
+    </main>
+</template>
+
+<script>
+    app.component('demo3', {
+        data: () => ({
+            markers: [],
+            id: '',
+            text: '',
+            photo: '',
+        }),
+
+        methods: {
+            addMarker(id, data) {
+                const { position, text, photo } = data;
+
+                const m = new gm.Marker({
+                    map,
+                    animation: gm.Animation.DROP,
+                    draggable: true,
+                    // Add options --> id, position, text and photo
+                    id, // Custom         
+                    position, // { lat: 0, lng: 0 }
+                    label: { text, className: 'label' },
+                    photo, // Custom
+                    icon: { url: photo + '#icon', scaledSize: new gm.Size(50, 50) },
+                });
+
+                this.markers.push(m);
+
+                // Marker 'dblclick' --> Firebase DELETE
+                m.addListener('dblclick', e => {
+                    MARKERS.doc(m.id).delete();
+                });
+
+                // Marker 'position_changed' --> update UI
+                m.addListener('position_changed', e => {
+                    this.$forceUpdate();
+                });
+
+                // Marker 'dragend' --> Firebase UPDATE (position)
+                // position_changed, drag --> less efficient
+                // dragend --> efficient
+                // *** For high data frequency app --> Realtime Database ***
+                m.addListener('dragend', e => {
+                    MARKERS.doc(m.id).update({
+                        position: e.latLng.toJSON(),
+                    });
+                });
+
+                // Marker 'click' --> fill id, text and photo --> open info window
+                m.addListener('click', e => {
+                    this.id = m.id;
+                    this.text = m.label.text;
+                    this.photo = m.photo;
+                    this._info.open(map, m);
+                });
+            },
+            removeAll() {
+                // Firebase DELETE ALL
+                this.markers.forEach(m => MARKERS.doc(m.id).delete());
+            },
+            remove(m) {
+                // Firebase DELETE
+                MARKERS.doc(m.id).delete();
+            },
+            cancel() {
+                // Close info window
+                this._info.close();
+            },
+            change(e) {
+                // Resize (crop) photo to dataURL
+                const f = e.target.files[0];
+                crop(f, 100, 100, 'dataURL', 'image/webp')
+                    .then(dataURL => this.photo = dataURL);
+                e.target.value = '';
+            },
+            save() {
+                // Firebase UPDATE (text, photo) --> close info window
+                MARKERS.doc(this.id).update({
+                    text: this.text,
+                    photo: this.photo,
+                });
+                this._info.close();
+            },
+            panTo(m) {
+                map.panTo(m.getPosition());
+                m.setAnimation(gm.Animation.BOUNCE);
+                setTimeout(() => m.setAnimation(null), 3000);
+                
+                // Click on marker (to open info window)
+                gm.event.trigger(m, 'click');
+            },
+        },
+
+        created() {
+            this.$root.title = 'Demo 3 : Fire Marker';
+
+            // Non-reactive properties
+            this._info = null;
+
+            // ================================================================
+            // Firebase
+            // ================================================================
+
+            // Firebase (subscribe for changes) --> get unsubscribe() function
+            unsubscribe = MARKERS?.onSnapshot(snap => {
+                snap.docChanges().forEach(change => {
+                    const { type, doc } = change;
+
+                    if (type == 'added') {
+                        // Record added --> add marker
+                        this.addMarker(doc.id, doc.data());
+                    }
+                    else if (type == 'removed') {
+                        // Record removed --> remove marker
+                        const m = this.markers.find(m => m.id == doc.id);
+                        Vue.toRaw(m).setMap(null);
+                        const i = this.markers.indexOf(m);
+                        this.markers.splice(i, 1);
+                    }
+                    else if (type == 'modified') {
+                        // Record modified --> modify marker
+                        const { position, text, photo } = doc.data();
+                        const m = this.markers.find(m => m.id == doc.id);
+                        m.setOptions({
+                            position,
+                            label: { text, className: 'label' },
+                            photo,
+                            icon: { url: photo + '#icon', scaledSize: new gm.Size(50, 50) },
+                        });
+                    }
+                });
+            });
+
+            // ================================================================
+        },
+
+        mounted() {
+            // ================================================================
+            // Google Maps
+            // ================================================================
+
+            map = new gm.Map($('#map')[0], {
+                center,
+                zoom: 16,
+                disableDefaultUI: true,
+                clickableIcons: false,
+                disableDoubleClickZoom: true,
+            });
+
+            // Map 'dblclick' --> Firebase INSERT (position, text, photo)
+            map.addListener('dblclick', e => {
+                MARKERS.doc().set({
+                    position: e.latLng.toJSON(),
+                    text: 'Untitled',
+                    photo: 'image/photo.png',
+                });
+            });
+
+            // Map 'click' --> close info window
+            map.addListener('click', e => {
+                this._info.close();
+            });
+
+            this._info = new gm.InfoWindow({
+                content: $('#info')[0],
+            });
+
+            // ================================================================
+        },
+
+        unmounted() {
+            map = null;
+            // Unsubscribe snapshot listener
+            unsubscribe();
+        },
+    });
+</script>

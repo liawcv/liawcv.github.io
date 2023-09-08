@@ -1,0 +1,156 @@
+<style>
+    :root {
+        display: grid;
+    }
+
+    #map {
+        border: 1px solid #333;
+    }
+
+    #panel {
+        background: #fff;
+        border: 1px solid #999;
+        border-radius: 3px;
+        margin: 5px;
+        padding: 5px;
+        font-size: 16px;
+    }
+</style>
+<template>
+    <main>
+        <div id="map"></div>
+
+        <template>
+            <div id="panel">
+                {{ markers.length }} marker(s)
+                <button @click="clear">Clear</button>
+            </div>
+        </template>
+    </main>
+</template>
+
+<script>
+    app.component('demo11', {
+        data: () => ({
+            markers: [],
+        }),
+
+        methods: {
+            clear() {
+                // Remove all markers
+                this.markers.forEach(m => Vue.toRaw(m).setMap(null));
+                this.markers = [];
+            },
+        },
+
+        created() {
+            this.$root.title = 'Demo 11 : Polygon and Marker';
+        },
+
+        mounted() {
+            // ================================================================
+            // Google Maps
+            // ================================================================
+
+            map = new gm.Map(document.getElementById('map'), {
+                center,
+                zoom: 15,
+                disableDefaultUI: true,
+                disableDoubleClickZoom: true,
+                clickableIcons: false,
+                // Fullscreen Control
+                fullscreenControl: true,
+            });
+
+            // Add panel into map (top-left corner)
+            const panel = $('#panel')[0];
+            panel.index = 0;
+            map.controls[gm.ControlPosition.TOP_LEFT].push(panel);
+
+            // Polygon --> by default no path (hidden)
+            const poly = new gm.Polygon({
+                map,
+                strokeColor: 'orange',
+                fillColor: 'orange',
+            });
+
+            // Drawing manager --> by default no map (hidden)
+            const mgr = new gm.drawing.DrawingManager({
+                drawingControlOptions: {
+                    drawingModes: ['marker'],
+                },
+                drawingMode: 'marker',
+                // Default marker options (animation, draggable)
+                markerOptions: {
+                    animation: gm.Animation.DROP,
+                    draggable: true,
+                    icon: 'image/m/green.png',
+                },
+            });
+
+            // Drawing manager events
+            mgr.addListener('markercomplete', m => {
+                // Test if marker is inside polygon
+                const inside = gm.geometry.poly.containsLocation(m.getPosition(), poly);
+
+                // If not inside, reject marker and return
+                if (!inside) {
+                    m.setMap(null);
+                    return;
+                }
+
+                this.markers.push(m);
+
+                m.addListener('dblclick', e => {
+                    // dblclick --> remove marker    
+                    m.setMap(null);
+                    const i = this.markers.indexOf(m);
+                    this.markers.splice(i, 1);
+                });
+
+                // Remeber position, handle drag and dragend events
+                // NOTE: position_changed event doesn't work here
+                m.pos = m.getPosition(); // Custom
+                m.addListener('drag'   , e => update(m));
+                m.addListener('dragend', e => update(m));
+            });
+
+            function update(m) {
+                // Ensure marker is always inside polygon
+                const inside = gm.geometry.poly.containsLocation(m.getPosition(), poly);
+                if (inside) {
+                    m.pos = m.getPosition();
+                }
+                else {
+                    m.setPosition(m.pos);
+                }
+            }
+
+            // ================================================================
+            // Firestore
+            // ================================================================
+
+            // Read polygon path from Firebase
+            // Data -----> Set polygon, set drawing manager
+            // No data --> Redirect to Demo10
+            DB.doc('map/$').get().then(doc => {
+                const { polygon } = doc.data() ?? {};
+                if (polygon) {
+                    const path = gm.geometry.encoding.decodePath(polygon);
+                    poly.setPath(path);
+                    mgr.setMap(map);
+                }
+                else {
+                    alert('No data. Set polygon in Demo 10');
+                    this.$router.push('/demo10');
+                }
+            });
+
+            // ================================================================
+        },
+
+        unmounted() {
+            map = null;
+        },
+    });
+</script>

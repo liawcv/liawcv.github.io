@@ -1,0 +1,221 @@
+<style>
+    :root {
+        display: grid;
+        grid: 'panel map' auto 
+              'items map' 1fr 
+              / 200px 1fr;
+        gap: 10px;
+        overflow: auto;
+    }
+
+    #panel {
+        grid-area: panel;
+    }
+
+    #map {
+        grid-area: map;
+        border: 1px solid #333;
+    }
+
+    #items {
+        grid-area: items;
+        overflow-y: scroll;
+
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .item {
+        border: 1px solid #666;
+        border-radius: 3px;
+        padding: 3px;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .item:hover {
+        background-color: #ccc;
+    }
+
+    .item b {
+        display: inline-block;
+        width: 25px;
+        height: 20px;
+        border-radius: 3px;
+        margin-right: 5px;
+        background-color: #666;
+        color: #fff;
+        text-align: center;
+    }
+
+    .item span {
+        display: inline-block;
+        width: 140px;
+        text-align: right;
+    }
+</style>
+
+<template>
+    <main>
+        <div id="panel">
+            <div>
+                <select v-model.number="radius">
+                    <option>500</option>
+                    <option>1000</option>
+                    <option>1500</option>
+                    <option>2000</option>
+                    <option>2500</option>
+                    <option>3000</option>
+                </select>
+                meters
+            </div>
+
+            <hr>
+
+            <div>
+                {{ result.length }} point(s) within radius
+            </div>
+        </div>
+
+        <div id="items">
+            <div class="item" v-for="r of result">
+                <b>{{ r.text }}</b>
+                <span>{{ r.distance.toFixed(3) }} m</span>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </main>
+</template>
+
+<script>
+    app.component('demo7', {
+        data: () => ({
+            radius: 500,
+            result: [],
+        }),
+
+        /* NOTE: This won't work, as update() is not a vue method.
+        watch: {
+            radius() {
+                update();
+            },
+        },
+        */
+
+        created() {
+            this.$root.title = 'Demo 7 : Circle and Distance';
+        },
+
+        mounted() {
+            // ================================================================
+            // Google Maps
+            // ================================================================
+
+            map = new gm.Map($('#map')[0], {
+                center,
+                zoom: 15,
+                disableDefaultUI: true,
+                clickableIcons: false,
+                disableDoubleClickZoom: true,
+            });
+
+            const circle = new gm.Circle({
+                map,
+            });
+
+            let origin = null;
+            const markers = [];
+            
+            gm.event.addListenerOnce(map, 'bounds_changed', e => {
+                // Generate 10 markers at random position within the map's bounds
+                const sw = map.getBounds().getSouthWest();
+                const sp = map.getBounds().toSpan(); // height (lat) & width (lng)
+
+                for (let n = 1; n <= 10; n++) {
+                    const p = new gm.LatLng(
+                        sw.lat() + sp.lat() * Math.random(),
+                        sw.lng() + sp.lng() * Math.random()
+                    );
+                    addMarker(p, n + '');
+                }
+            });
+
+            // Set icon url and labelOrigin
+            const point = new gm.Point(20, 15);
+            const RED   = { url: 'image/m/red.png'  , labelOrigin: point };
+            const GREEN = { url: 'image/m/green.png', labelOrigin: point };
+            const BLUE  = { url: 'image/m/blue.png' , labelOrigin: point };
+
+            function addMarker(position, text) {
+                const m = new gm.Marker({
+                    position,
+                    map,
+                    draggable: true,
+                    label: { text, fontSize: '20px', fontWeight: 'bold' },
+                    // Use RED icon
+                    icon: RED,
+                });
+
+                markers.push(m);
+
+                m.addListener('click', e => {
+                    // Set origin, update result
+                    origin = m;
+                    update();
+                });
+
+                m.addListener('drag', e => {
+                    // Update result
+                    update();
+                });
+            }
+
+            // NOTE: Use function expression to retain [this] context
+            const update = () => {
+                // Complete the function
+                
+                // (A) Reset circle (center & radius)
+                circle.setCenter(origin?.getPosition());
+                circle.setRadius(this.radius);
+
+                // (B) Reset markers (icon) & result
+                markers.forEach(m => m.setIcon(RED));
+                this.result = [];
+
+                // (C) Return if no origin
+                if (!origin) return;
+
+                // (D) Calculation
+                origin.setIcon(BLUE);
+
+                for (const m of markers.filter(m => m != origin)) {
+                    const p1 = origin.getPosition();
+                    const p2 = m.getPosition();
+                    const distance = gm.geometry.spherical.computeDistanceBetween(p1, p2);
+
+                    if (distance < this.radius) {
+                        m.setIcon(GREEN);
+                        this.result.push({ text: m.label.text, distance });
+                    }
+                }
+            };
+
+            map.addListener('click', e => {
+                // Reset origin, update result
+                origin = null;
+                update();
+            });
+
+            // Watch radius, update result
+            this.$watch('radius', update);
+
+            // ================================================================
+        },
+
+        unmounted() {
+            map = null;
+        },
+    });
+</script>

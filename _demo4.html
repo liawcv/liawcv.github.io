@@ -1,0 +1,108 @@
+<style>
+    :root {
+        display: grid;
+    }
+
+    #map {
+        border: 1px solid #333;
+    }
+</style>
+
+<template>
+    <main>
+        <div id="map"></div>
+    </main>
+</template>
+
+<script>
+    app.component('demo4', {
+        data: () => ({
+            
+        }),
+
+        created() {
+            this.$root.title = 'Demo 4 : Polyline';
+        },
+
+        mounted() {
+            // ================================================================
+            // Google Maps
+            // ================================================================
+
+            map = new gm.Map($('#map')[0], {
+                center,
+                zoom: 15,
+                disableDefaultUI: true,
+                disableDoubleClickZoom: true,
+                clickableIcons: false,
+            });
+
+            function createMarker(position) {
+                const m = new gm.Marker({
+                    position,
+                    map,
+                    draggable: true,
+                });
+
+                // Marker event --> position_changed
+                m.addListener('position_changed', e => {
+                    const p1 = m1.getPosition();
+                    const p2 = m2.getPosition();
+                    line.setPath([p1, p2]);
+
+                    const p = gm.geometry.spherical.interpolate(p1, p2, 0.5);
+                    mc.setPosition(p);
+
+                    const d = gm.geometry.spherical.computeDistanceBetween(p1, p2);
+                    mc.setLabel((d / 1000).toFixed(3) + ' KM');
+                });
+
+                return m;
+            }
+
+            // Create points --> p1 & p2
+            const p1 = new gm.LatLng(center.lat(), center.lng() - 0.01);
+            const p2 = new gm.LatLng(center.lat(), center.lng() + 0.01);
+
+            // Create markers --> m1 & m2
+            const m1 = createMarker(p1);
+            const m2 = createMarker(p2);
+
+            // Create polyline --> line
+            const line = new gm.Polyline({
+                map,
+                path: [p1, p2],
+                strokeColor: 'red',
+                strokeWeight: 10,
+                strokeOpacity: 0.5,
+                geodesic: true,
+            });
+
+            // Create marker --> mc
+            const mc = new gm.Marker({
+                map,
+                position: center,
+                icon: {
+                    path: gm.SymbolPath.CIRCLE,
+                    scale: 50,
+                    strokeColor: 'red',
+                    strokeWeight: 10,
+                    strokeOpacity: 0.5,
+                    fillColor: 'white',
+                    fillOpacity: 0.7,
+                },
+                label: '0.000 KM',
+                zIndex: -999,
+            });
+
+            // Trigger position_changed event
+            gm.event.trigger(m1, 'position_changed');
+
+            // ================================================================
+        },
+
+        unmounted() {
+            map = null;
+        },
+    });
+</script>
