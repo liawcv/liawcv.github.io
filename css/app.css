@@ -1,7 +1,7 @@
 /***** Font *****/
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 
-body, input, textarea, select, button {
+body, input, textarea, select, button, label {
     font-size: 16px;
     font-family: 'Roboto', sans-serif;
 }
@@ -10,8 +10,12 @@ body, input, textarea, select, button {
 body {
     margin: 0;
     height: 100vh;
+}
+
+#app {
+    height: 100vh;
     display: grid;
-    grid-template-rows: auto auto 1fr auto;
+    grid: auto auto 1fr auto / auto;
 }
 
 header, footer {
@@ -49,12 +53,12 @@ nav a:hover {
 }
 
 main {
-    padding: 10px 10px;
+    padding: 10px;
 }
 
 main h1 {
     margin: 0;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
 }
 
 /***** Table *****/
@@ -88,10 +92,17 @@ th.desc::after {
 /***** Form *****/
 .form {
     display: grid;
-    grid-template-columns: auto auto;
+    grid: auto / auto auto;
     gap: 5px;
     place-content: start;
     place-items: center start;
+}
+
+.form > label {
+    background: #ccc;
+    place-self: stretch;
+    padding: 2px 4px;
+    font-weight: bold;
 }
 
 .form > section {
@@ -107,10 +118,10 @@ th.desc::after {
 .fade-enter-active,
 .fade-leave-active,
 .fade-move {
-    transition: 0.5s;
+    transition: 0.3s;
 } 
 
-.fade-enter,
+.fade-enter-from,
 .fade-leave-to {
     opacity: 0;
 }
@@ -119,10 +130,10 @@ th.desc::after {
 .zoom-enter-active,
 .zoom-leave-active,
 .zoom-move {
-    transition: 0.5s;
+    transition: 0.3s;
 } 
 
-.zoom-enter,
+.zoom-enter-from,
 .zoom-leave-to {
     opacity: 0;
     transform: scale(0.5);
@@ -132,10 +143,10 @@ th.desc::after {
 .rotate-enter-active,
 .rotate-leave-active,
 .rotate-move {
-    transition: 0.5s;
+    transition: 0.3s;
 } 
 
-.rotate-enter,
+.rotate-enter-from,
 .rotate-leave-to {
     opacity: 0;
     transform: scale(0.5) rotate(3turn);
@@ -145,10 +156,10 @@ th.desc::after {
 .slide-enter-active,
 .slide-leave-active,
 .slide-move {
-    transition: 0.5s;
+    transition: 0.3s;
 } 
 
-.slide-enter,
+.slide-enter-from,
 .slide-leave-to {
     opacity: 0;
     transform: translate(-100px, 0);
@@ -157,10 +168,10 @@ th.desc::after {
 /***** Transition: slide-left *****/
 .slide-left-enter-active,
 .slide-left-leave-active {
-    transition: 0.25s;
+    transition: 0.3;
 }
 
-.slide-left-enter {
+.slide-left-enter-form {
     opacity: 0;
     transform: translate(100px, 0);
 }
@@ -173,10 +184,10 @@ th.desc::after {
 /***** Transition: slide-right *****/
 .slide-right-enter-active,
 .slide-right-leave-active {
-    transition: 0.25s;
+    transition: 0.3s;
 }
 
-.slide-right-enter {
+.slide-right-enter-from {
     opacity: 0;
     transform: translate(-100px, 0);
 }
@@ -187,18 +198,3 @@ th.desc::after {
 }
 
 /***** Custom *****/
-form > div, form > label {
-    display: block;
-    margin-bottom: 5px;
-}
-
-form > div > label {
-    display: inline-block;
-    background-color: #ccc;
-    padding: 3px 6px;
-    width: 50px;
-}
-
-label > input {
-    vertical-align: text-top;
-}
