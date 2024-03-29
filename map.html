@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="image/favicon.png">
+    <link rel="stylesheet" href="css/app.css">
+    <title>Google Maps JS API</title>
+    <style>
+        /* Hide Google Maps message box */
+        #map div:has(.dismissButton) {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" v-cloak>
+        <header>
+            <h1><a href="/">{{ title }}</a></h1>
+        </header>
+
+        <nav>
+            <a href="#/index">Index</a>
+            <a href="#/demo1">1</a>
+            <a href="#/demo2">2</a>
+            <a href="#/demo3">3</a>
+            <a href="#/demo4">4</a>
+            <a href="#/demo5">5</a>
+            <a href="#/demo6">6</a>
+            <a href="#/demo7">7</a>
+            <a href="#/demo8">8</a>
+            <a href="#/demo9">9</a>
+            <a href="#/demo10">10</a>
+            <a href="#/demo11">11</a>
+            <a href="#/demo12">12</a>
+            <a href="#/demo13">13</a>
+        </nav>
+
+        <router-view v-slot="{ Component }">
+            <transition name="slide" mode="out-in">
+                <component :is="Component">
+            </transition>
+        </router-view>
+    </div>
+
+    <!-- Add geometry & drawing library -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDz2uoI-By20D_wuU0fPHtQVXl_W1XhxN8&libraries=geometry,drawing"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.21.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.21.0/firebase-firestore-compat.min.js"></script> 
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.21.0/firebase-auth-compat.min.js"></script>  -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.21.0/firebase-storage-compat.min.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.2.47/vue.global.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue-router/4.1.6/vue-router.global.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.slim.min.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Setup (Google Maps) ================================================
+        
+        const gm = google.maps;
+        const center = new gm.LatLng(3.215600, 101.728100); // [OR] { lat: 3.215600, lng: 101.728100 }
+        let map = null;
+        
+        // Setup (Firebase) ===================================================
+
+        // Intialize firebase app
+        firebase.initializeApp({
+            projectId: 'liaw-202309',
+        });
+
+        // Setup firebase firestore
+        const DB = firebase.firestore();
+        const MARKERS = DB.collection('markers');
+        const CIRCLES = DB.collection('circles');
+        let unsubscribe = null;
+
+        // Vue ================================================================
+
+        const router = VueRouter.createRouter({
+            history: VueRouter.createWebHashHistory(),
+            routes: [
+                { path: '/index' , component: load('index')  },
+                { path: '/demo1' , component: load('demo1')  },
+                { path: '/demo2' , component: load('demo2')  },
+                { path: '/demo3' , component: load('demo3')  },
+                { path: '/demo4' , component: load('demo4')  },
+                { path: '/demo5' , component: load('demo5')  },
+                { path: '/demo6' , component: load('demo6')  },
+                { path: '/demo7' , component: load('demo7')  },
+                { path: '/demo8' , component: load('demo8')  },
+                { path: '/demo9' , component: load('demo9')  },
+                { path: '/demo10', component: load('demo10') },
+                { path: '/demo11', component: load('demo11') },
+                { path: '/demo12', component: load('demo12') },
+                { path: '/demo13', component: load('demo13') },
+                { path: '/:all(.*)', redirect: '/index' },
+            ],
+        });
+
+        const app = Vue.createApp({
+            data: () => ({
+                title: 'Untitled',
+            }),
+
+            watch: {
+                title() {
+                    document.title = this.title;
+                },
+            },
+        });
+
+        app.use(router);
+
+        app.directive('focus', {
+            mounted(el) {
+                el.focus();
+            },
+        });
+
+        const root = app.mount('#app');
+    </script>
+</body>
+</html>
