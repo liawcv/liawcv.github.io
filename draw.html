@@ -1,0 +1,106 @@
+<html>
+
+<head>
+    <title>Simple Drawing App</title>
+    <base href="https://liawcv.github.io">
+    <link rel="shortcut icon" href="pencil.png">
+
+    <style>
+        body {
+            text-align: center;
+            font-family: arial;
+            font-size: x-large;
+            background-color: #333;
+            color: #ccc;
+        }
+
+        canvas {
+            border: 1px solid;
+            cursor: url(pencil.png), crosshair;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>
+        <img src="pencil.png">
+        Simple Drawing App
+    </h1>
+
+    <p>
+        <input type="color" id="col">
+        <input type="range" id="ran" min="1" max="50" value="5">
+        <button id="but">❌</button>
+    </p>
+
+    <canvas id="can" width="500" height="500"></canvas>
+
+    <script src="crop.js"></script>
+    <script>
+        c = can.getContext("2d");
+
+        function clear() {
+            c.fillStyle = "white";
+            c.fillRect(0, 0, 500, 500);
+        }
+
+        clear();
+
+        but.addEventListener("click", clear);
+
+
+
+        c.lineCap = "round";
+        a = null;
+        b = null;
+
+        function draw(e) {
+            if (e.buttons != 1) return;
+
+            a ??= e.offsetX - e.movementX;
+            b ??= e.offsetY - e.movementY;
+            x = e.offsetX;
+            y = e.offsetY;
+
+            c.beginPath();
+            c.moveTo(a, b);
+            c.lineTo(x, y);
+            c.strokeStyle = col.value;
+            c.lineWidth = ran.value;
+            c.stroke();
+
+            a = x;
+            b = y;
+        }
+
+        can.addEventListener("mousedown", draw);
+        can.addEventListener("mousemove", draw);
+        can.addEventListener("mouseout", draw);
+
+        function stop() {
+            a = null;
+            b = null;
+        }
+
+        can.addEventListener("mouseup", stop);
+        can.addEventListener("mouseout", stop);
+
+
+        function drag(e) {
+            e.preventDefault();
+        }
+
+        document.addEventListener("dragover", drag);
+
+        async function drop(e) {
+            e.preventDefault();
+            file = e.dataTransfer.files[0];
+            image = await crop(file, 500, 500);
+            c.drawImage(image, 0, 0);
+        }
+
+        document.addEventListener("drop", drop);
+    </script>
+</body>
+
+</html>
