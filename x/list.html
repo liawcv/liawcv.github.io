@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>List</title>
+    <style>
+        body {
+            font: 16px Arial, sans-serif;
+            background: #000;
+            padding: 0;
+            margin: 0;
+        }
+
+        main {
+            display: grid;
+            grid: auto-flow 200px / 1fr 1fr;
+            gap: 2px;
+        }
+
+        main > div {
+            position: relative;
+        }
+
+        main > div > img {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        main > div > span {
+            position: absolute;
+            inset: auto 0 0 0;
+            background: #0009;
+            color: #fff;
+            text-align: center;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <main></main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script>
+        function load(data) {
+            $('main').empty();
+            for (const s of data) {
+                $('main').append(`
+                    <div>
+                        <img src="images/${s.id}.jpg">
+                        <span>${s.no}. ${s.name}</span>
+                    </div>
+                `);
+            }
+        }
+
+        const url = new URL(location);
+        const file = url.searchParams.get('file');
+
+        fetch(file)
+            .then(resp => resp.json())
+            .then(json => load(json));
+    </script>
+</body>
+</html>
